@@ -94,7 +94,6 @@ function showEditForm(post) {
   });
 }
 
-// Move updatePost to top-level scope
 function updatePost(post) {
   const updatedTitle = document.getElementById("edit-title").value.trim();
   const updatedContent = document.getElementById("edit-content").value.trim();
@@ -233,6 +232,9 @@ function addNewPostListener() {
         postList.appendChild(postElement);
         newPostForm.reset();
         handlePostClick(post);
+        if (editPostForm) {
+          editPostForm.classList.add("hidden");
+        }
       })
       .catch((error) => {
         alert("Failed to create post. Please try again.");
