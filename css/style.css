@@ -47,8 +47,10 @@ p {
   transition: background-color 0.3s;
 }
 
-.post-item:hover {
+.post-item:hover,
+.post-item:focus {
   background-color: #4a627a;
+  outline: none;
 }
 
 .post-detail {
@@ -138,23 +140,26 @@ button {
 #edit-post-form #cancel-edit:hover {
   background-color: #6c7a7b;
   color: orange;
-  cursor: pointer;
 }
 
 .hidden {
   display: none;
 }
 
-.post-item img {
+.post-image {
   max-width: 100%;
   height: auto;
   border-radius: 4px;
   margin-bottom: 10px;
+  object-fit: cover;
+  max-height: 150px;
 }
 
-.post-detail img {
+.post-detail-image {
   max-width: 100%;
   height: auto;
   border-radius: 4px;
   margin-bottom: 15px;
+  object-fit: cover;
+  max-height: 200px;
 }

@@ -1,3 +1,10 @@
+const postList = document.getElementById("post-list");
+const postDetail = document.getElementById("post-detail");
+const newPostForm = document.getElementById("new-post-form");
+const editPostForm = document.getElementById("edit-post-form");
+
+const FALLBACK_IMAGE = "https://picsum.photos/400/200?random=1";
+
 function main() {
   displayPosts();
   addNewPostListener();
@@ -5,9 +12,11 @@ function main() {
 
 function displayPosts() {
   fetch("http://localhost:3000/posts")
-    .then((response) => response.json())
+    .then((response) => {
+      if (!response.ok) throw new Error("Failed to fetch posts");
+      return response.json();
+    })
     .then((posts) => {
-      const postList = document.getElementById("post-list");
       postList.innerHTML = "";
 
       posts.forEach((post) => {
@@ -18,33 +27,42 @@ function displayPosts() {
       if (posts.length > 0) {
         handlePostClick(posts[0]);
       } else {
-        document.getElementById("post-detail").innerHTML =
-          "<p>No posts available</p>";
+        postDetail.innerHTML = "<p>No posts available</p>";
       }
     })
-    .catch((error) => console.error("Error fetching posts:", error));
+    .catch((error) => {
+      console.error("Error fetching posts:", error);
+      postDetail.innerHTML = "<p>Error loading posts</p>";
+    });
 }
 
 function createPostElement(post) {
   const postElement = document.createElement("div");
   postElement.className = "post-item";
+  postElement.tabIndex = 0;
   postElement.innerHTML = `
-      <h3>${post.title}</h3>
-      <p>By ${post.author}</p>
-    `;
+    <img src="${post.image}" alt="${post.title}" class="post-image" onerror="this.src='${FALLBACK_IMAGE}'" />
+    <h3>${post.title}</h3>
+    <p>By ${post.author}</p>
+  `;
   postElement.addEventListener("click", () => handlePostClick(post));
+  postElement.addEventListener("keypress", (e) => {
+    if (e.key === "Enter" || e.key === " ") {
+      handlePostClick(post);
+    }
+  });
   return postElement;
 }
 
 function handlePostClick(post) {
-  const postDetail = document.getElementById("post-detail");
   postDetail.innerHTML = `
-      <h2>${post.title}</h2>
-      <p><strong>Author:</strong> ${post.author}</p>
-      <p><strong>Content:</strong> ${post.content}</p>
-      <button id="edit-post">Edit</button>
-      <button id="delete-post">Delete</button>
-    `;
+    <img src="${post.image}" alt="${post.title}" class="post-detail-image" onerror="this.src='${FALLBACK_IMAGE}'" />
+    <h2>${post.title}</h2>
+    <p><strong>Author:</strong> ${post.author}</p>
+    <p><strong>Content:</strong> ${post.content}</p>
+    <button id="edit-post">Edit</button>
+    <button id="delete-post">Delete</button>
+  `;
 
   document
     .getElementById("edit-post")
@@ -55,30 +73,42 @@ function handlePostClick(post) {
 }
 
 function showEditForm(post) {
-  const editForm = document.getElementById("edit-post-form");
-  editForm.classList.remove("hidden");
+  editPostForm.classList.remove("hidden");
 
   document.getElementById("edit-title").value = post.title;
   document.getElementById("edit-content").value = post.content;
+  if (document.getElementById("edit-author")) {
+    document.getElementById("edit-author").value = post.author;
+  }
+  if (document.getElementById("edit-image")) {
+    document.getElementById("edit-image").value = post.image;
+  }
 
-  editForm.onsubmit = (event) => {
+  editPostForm.onsubmit = (event) => {
     event.preventDefault();
     updatePost(post);
   };
 
-  document.getElementById("cancel-edit").addEventListener(
-    "click",
-    () => {
-      editForm.classList.add("hidden");
-      editForm.onsubmit = null;
-    },
-    { once: true }
-  );
+  document.getElementById("cancel-edit").addEventListener("click", () => {
+    editPostForm.classList.add("hidden");
+  });
 }
 
+// Move updatePost to top-level scope
 function updatePost(post) {
-  const updatedTitle = document.getElementById("edit-title").value;
-  const updatedContent = document.getElementById("edit-content").value;
+  const updatedTitle = document.getElementById("edit-title").value.trim();
+  const updatedContent = document.getElementById("edit-content").value.trim();
+  const updatedAuthor = document.getElementById("edit-author")
+    ? document.getElementById("edit-author").value.trim()
+    : post.author;
+  const updatedImage = document.getElementById("edit-image")
+    ? document.getElementById("edit-image").value.trim()
+    : post.image;
+
+  if (!updatedTitle || !updatedContent || !updatedAuthor) {
+    alert("Title, author, and content cannot be empty");
+    return;
+  }
 
   fetch(`http://localhost:3000/posts/${post.id}`, {
     method: "PATCH",
@@ -86,59 +116,57 @@ function updatePost(post) {
     body: JSON.stringify({
       title: updatedTitle,
       content: updatedContent,
+      author: updatedAuthor,
+      image: updatedImage,
     }),
   })
-    .then((response) => response.json())
+    .then((response) => {
+      if (!response.ok) throw new Error("Failed to update post");
+      return response.json();
+    })
     .then((updatedPost) => {
       post.title = updatedPost.title;
       post.content = updatedPost.content;
+      post.author = updatedPost.author;
+      post.image = updatedPost.image;
 
-      const postList = document.getElementById("post-list");
       const postItems = postList.querySelectorAll(".post-item");
       postItems.forEach((item) => {
-        if (item.querySelector("h3").textContent === post.title) {
+        if (
+          item.querySelector("h3").textContent === updatedPost.title ||
+          item.querySelector("h3").textContent === post.title
+        ) {
           item.innerHTML = `
-              <h3>${post.title}</h3>
-              <p>By ${post.author}</p>
-            `;
+            <img src="${post.image}" alt="${post.title}" class="post-image" onerror="this.src='${FALLBACK_IMAGE}'" />
+            <h3>${post.title}</h3>
+            <p>By ${post.author}</p>
+          `;
+          item.addEventListener("click", () => handlePostClick(post));
+          item.addEventListener("keypress", (e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              handlePostClick(post);
+            }
+          });
         }
       });
 
-      document.getElementById("post-detail").innerHTML = `
-        <h2>${post.title}</h2>
-        <p><strong>Author:</strong> ${post.author}</p>
-        <p><strong>Content:</strong> ${post.content}</p>
-        <button id="edit-post">Edit</button>
-        <button id="delete-post">Delete</button>
-      `;
+      handlePostClick(post);
 
-      document
-        .getElementById("edit-post")
-        .addEventListener("click", () => showEditForm(post));
-      document
-        .getElementById("delete-post")
-        .addEventListener("click", () => deletePost(post));
-
-      // Hide the edit form after update
-      const editForm = document.getElementById("edit-post-form");
-      editForm.classList.add("hidden");
-      editForm.onsubmit = null;
+      editPostForm.classList.add("hidden");
+      editPostForm.onsubmit = null;
     })
     .catch((error) => {
-      alert("Failed to update post.");
+      alert("Failed to update post. Please try again.");
       console.error("Error updating post:", error);
     });
 }
 
-// Properly separated deletePost function
 function deletePost(post) {
-  // Send DELETE request to backend
   fetch(`http://localhost:3000/posts/${post.id}`, {
     method: "DELETE",
   })
     .then((response) => {
       if (!response.ok) throw new Error("Failed to delete post");
-      const postList = document.getElementById("post-list");
       const postItems = postList.querySelectorAll(".post-item");
       postItems.forEach((item) => {
         if (item.querySelector("h3").textContent === post.title) {
@@ -146,23 +174,35 @@ function deletePost(post) {
         }
       });
 
-      document.getElementById("post-detail").innerHTML =
-        "<p>Select a post to view details</p>";
-
-      if (!postList.querySelector(".post-item")) {
-        document.getElementById("post-detail").innerHTML =
-          "<p>No posts available</p>";
+      const remainingPosts = postList.querySelectorAll(".post-item");
+      if (remainingPosts.length > 0) {
+        const firstPostElement = remainingPosts[0];
+        const firstPostTitle = firstPostElement.querySelector("h3").textContent;
+        fetch("http://localhost:3000/posts")
+          .then((response) => {
+            if (!response.ok) throw new Error("Failed to fetch posts");
+            return response.json();
+          })
+          .then((posts) => {
+            const firstPost = posts.find((p) => p.title === firstPostTitle);
+            if (firstPost) handlePostClick(firstPost);
+          })
+          .catch((error) => {
+            console.error("Error fetching posts after deletion:", error);
+            postDetail.innerHTML = "<p>Error loading posts</p>";
+          });
+      } else {
+        postDetail.innerHTML = "<p>No posts available</p>";
       }
     })
     .catch((error) => {
-      alert("Failed to delete post.");
+      alert("Failed to delete post. Please try again.");
       console.error("Error deleting post:", error);
     });
 }
 
 function addNewPostListener() {
-  const form = document.getElementById("new-post-form");
-  form.addEventListener("submit", (event) => {
+  newPostForm.addEventListener("submit", (event) => {
     event.preventDefault();
 
     const title = document.getElementById("title").value.trim();
@@ -170,10 +210,10 @@ function addNewPostListener() {
     const content = document.getElementById("content").value.trim();
     const image =
       document.getElementById("image").value.trim() ||
-      "https://picsum.photos/400/200?random=" + Date.now();
+      `https://picsum.photos/400/200?random=${Date.now()}`;
 
     if (!title || !author || !content) {
-      alert("Please fill out all fields");
+      alert("Please fill out title, author, and content fields");
       return;
     }
 
@@ -184,15 +224,20 @@ function addNewPostListener() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(newPost),
     })
-      .then((response) => response.json())
+      .then((response) => {
+        if (!response.ok) throw new Error("Failed to create post");
+        return response.json();
+      })
       .then((post) => {
-        const postList = document.getElementById("post-list");
         const postElement = createPostElement(post);
         postList.appendChild(postElement);
-        form.reset();
+        newPostForm.reset();
         handlePostClick(post);
       })
-      .catch((error) => console.error("Error creating post:", error));
+      .catch((error) => {
+        alert("Failed to create post. Please try again.");
+        console.error("Error creating post:", error);
+      });
   });
 }
 
