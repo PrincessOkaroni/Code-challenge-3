@@ -1,0 +1,25 @@
+{
+  "posts": [
+    {
+      "id": 1,
+      "title": "Getting Started with JavaScript",
+      "author": "Purity Okaroni",
+      "content": "JavaScript is a versatile programming language that powers the web.",
+      "image": "./images/js.png"
+    },
+    {
+      "id": 2,
+      "title": "CSS Best Practices",
+      "author": "Princess Okaroni",
+      "content": "Cascading Style Sheets (CSS) is used to style HTML documents.",
+      "image": "./images/css .jpeg"
+    },
+    {
+      "id": 3,
+      "title": "Using json-server",
+      "author": "Purity Nekesa",
+      "content": "json-server is a simple way to create a REST API using a JSON file.",
+      "image": "./images/Json-server.jpeg"
+    }
+  ]
+}
